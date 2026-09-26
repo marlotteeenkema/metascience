@@ -1,0 +1,116 @@
+---
+title: "Meta_analysis_marlotte"
+format: html
+editor: visual
+---
+
+## Meta analysis assignment IV
+
+**Load packages**
+
+```{r}
+library(readxl)
+library(meta)
+```
+
+**Load data**
+
+```{r}
+mydata <- read_xlsx("data_my_paper.xlsx")
+```
+
+```{r}
+meta <- metacor(
+  cor = cor,          
+  n = n,
+  data = mydata,
+  common = FALSE,
+  random = TRUE,
+  method.tau = "REML",
+  method.random.ci = "HK"
+)
+
+
+meta
+
+```
+
+Title paper: Emotional Intelligence Predicts Academic Performance: A Meta-Analysis
+
+doi: http://dx.doi/org/10.1037/bul0000219
+
+This meta analysis focuses on emotional intelligence and academic performance. The main research question investigated the correlation between emotional intelligence (EI) and academic performance. This is a multilevel analysis, so the authors investigated 8 different moderators, such as EI stream, publication status, age or type of achievement. The meta analysis included 158 citations and tested for correlations.
+
+### Meta analysis
+
+This meta analysis is a multilevel analysis. Since this is out of the scope for this assignment, I will do a random effects meta analysis.
+
+First, let us calculate the pooled effect size.
+
+The meta-analysis returned a pooled effect size of *Fisher's z* = `r round(meta$TE.random, 2)`, 95% CI \[`r round(c(meta$lower.random, meta$upper.random), 2)`\]. The pooled effect size was significantly different from zero as indicated by the $Z$-test, *p* = `r round(meta$pval.random, 4)` . The forest plot below shows the pooled effect size of Pearson's r.
+
+```{r}
+forest(meta)
+```
+
+The between-study heterogeneity variance was estimated at $\tau^2$ = `r round(meta$tau2, 3)` (95% CI: `r round(meta$lower.tau2, 2)`; `r round(meta$upper.tau2, 2)`).
+
+The Cochran's Q-test is significant, Q = `r round(meta$Q, 1)`, *p* = `r meta$pval.Q`. Thus, there is evidence that we can reject the null hypothesis that the observed variation in effect sizes can be explained by sampling error alone. The estimated I2 is `r round(meta$I2, 2)*100`% indicating very high between-study heterogeneity. The 95% prediction interval ranged from Fisher's z = `r round(meta$lower.predict, 2)` to `r round(meta$upper.predict, 2)`.
+
+### Bias detection tests
+
+#### Funnel plot
+
+```{r}
+# Produce funnel plot
+funnel(meta,
+       xlim = c(-0.25, 1),
+       studlab = TRUE) # Add study label
+```
+
+Since this meta analysis only has 10 studies, it is difficult to see real symmetry or asymmetry, but the funnel plot does seem to show some asymmetry. Study 8 has a relatively small standard error but a quite high correlation. This asymmetry could indicate between study heterogeneity, but other explanations are also possible.
+
+#### Trim & fill method
+
+```{r}
+(trim <- trimfill(meta))
+```
+
+The trim and fill added a total of 6 studies.
+
+### Subgroup analysis
+
+Since we found between study heterogeneity, we will do a moderator analysis. The moderator I chose to look at is Stream. This means whether the emotional intelligence is recorded by 1) ability, 2) self-reported or 3) mixed. For this we will do a subgroup analysis on Stream.
+
+```{r}
+#matching the stream with its name
+mydata$stream <- factor(
+  mydata$stream,
+  levels = c(1, 2, 3),
+  labels = c("Ability EI",
+             "Self-reported EI",
+             "Mixed EI")
+)
+```
+
+```{r}
+meta_stream <- update(
+  meta,
+  subgroup = mydata$stream
+)
+
+```
+
+The pooled effect size for ability EI was Fishers z = `r round(meta_stream$TE.random.w[1], 2)`, 95% CI \[`r round(meta_stream$lower.random.w[1], 2)`, `r round(meta_stream$upper.random.w[1], 2)`\].
+
+For self-reported EI, the pooled effect size was Fisher's z = `r round(meta_stream$TE.random.w[2], 2)`, 95% CI \[`r round(meta_stream$lower.random.w[2], 2)`, `r round(meta_stream$upper.random.w[2], 2)`\].
+
+For mixed EI, the pooled effect size was Fisher's z = `r round(meta_stream$TE.random.w[3], 2)`, 95% CI \[`r round(meta_stream$lower.random.w[3], 2)`, `r round(meta_stream$upper.random.w[3], 2)`\].
+
+\[interpretation\]
+
+The test for subgroup differences was not significant, Q(`r round(meta_stream$df.Q.b, 2)`) = `r meta_stream$Q.b.random`, p = `r round(meta_stream$pval.Q.b.random, 2)`, indicating that the null hypothesis of no differences in effect sizes between subgroups could not be rejected. This means that there is no evidence that the way EI is measured (by ability, self-reported or mixed) explains differences in effect sizes.
+
+\[interpretation\]
+
+### Reflection
